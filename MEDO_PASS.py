@@ -19,7 +19,7 @@ log_file = "log.txt"
 found_file = "found.txt"
 
 def print_header():
-    os.system("clear" if os.name == "posix" else "cls")
+    os.system("clear")
     print("="*60)
     print(r"""    
 ███╗   ███╗    ███████╗    ██████╗      ██████╗ 
@@ -37,6 +37,8 @@ def print_header():
     print("The developer " + Style.BRIGHT + "Mohammad Salem" + Style.NORMAL + " is NOT responsible for any misuse or damage.")
     print("Use this tool ONLY on systems you own or have explicit permission to test." + Style.RESET_ALL)
     print("="*60)
+    if os.name == "posix" and hasattr(os, "geteuid") and os.geteuid() != 0:
+        print(Fore.YELLOW + "[!] Warning: Some Wi-Fi features may require ROOT access." + Style.RESET_ALL)
     input(Fore.YELLOW + "Press ENTER to agree and continue..." + Style.RESET_ALL)
 
 def try_login(url, username_field, password_field, username, password, proxy):
@@ -62,18 +64,24 @@ def try_login(url, username_field, password_field, username, password, proxy):
 def wifi_tools():
     while True:
         print("\n[ Wi-Fi Tools ]")
-        print("1. Scan nearby networks (Linux only)")
-        print("2. Show connected network (Linux only)")
+        print("1. Scan nearby networks (Termux/Linux)")
+        print("2. Show connected network (Termux/Linux)")
         print("3. Internet speed test")
-        print("4. List connected devices (Linux/Termux)")
+        print("4. List connected devices (Termux/Linux)")
         print("0. Back to main menu")
 
         choice = input("[*] Choose option: ")
 
         if choice == "1":
-            os.system("iwlist wlan0 scan | grep 'ESSID'" if os.name == "posix" else "echo Only available on Linux")
+            if os.path.exists("/data/data/com.termux/files/usr/bin/termux-wifi-scaninfo"):
+                os.system("termux-wifi-scaninfo")
+            else:
+                os.system("iwlist wlan0 scan | grep 'ESSID'")
         elif choice == "2":
-            os.system("iwgetid" if os.name == "posix" else "echo Only available on Linux")
+            if os.path.exists("/data/data/com.termux/files/usr/bin/termux-wifi-connectioninfo"):
+                os.system("termux-wifi-connectioninfo")
+            else:
+                os.system("iwgetid")
         elif choice == "3":
             try:
                 import speedtest
@@ -88,7 +96,7 @@ def wifi_tools():
             except Exception as e:
                 print("[-] Speed test failed:", e)
         elif choice == "4":
-            os.system("ip neigh" if os.name == "posix" else "arp -a")
+            os.system("ip neigh")
         elif choice == "0":
             break
         else:
